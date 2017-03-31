@@ -14,7 +14,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using Object = System.Object;
 
 
 namespace LitJson
@@ -427,6 +429,12 @@ namespace LitJson
 
                     string property = (string) reader.Value;
 
+                    //try property in title case
+                    if (!t_data.Properties.ContainsKey(property))
+                    {
+                        property = property.First().ToString().ToUpper() + property.Substring(1);
+                    }
+
                     if (t_data.Properties.ContainsKey (property)) {
                         PropertyMetadata prop_data =
                             t_data.Properties[property];
@@ -461,9 +469,21 @@ namespace LitJson
                             }
                         }
 
-                        ((IDictionary) instance).Add (
-                            property, ReadValue (
-                                t_data.ElementType, reader));
+                        var keyType = value_type.GetGenericArguments()[0];
+                        if (keyType == typeof(Int32))
+                        {
+                            var value = ReadValue(value_type.GetGenericArguments()[1], reader);
+                            ((IDictionary) instance).Add (
+                                Int32.Parse(property), value);
+                        }
+                        else
+                        {
+                            ((IDictionary) instance).Add (
+                                property, ReadValue (
+                                    t_data.ElementType, reader));
+                        }
+
+
                     }
 
                 }
