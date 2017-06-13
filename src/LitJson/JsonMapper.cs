@@ -319,6 +319,9 @@ namespace LitJson
                 if (inst_type.IsClass || underlying_type != null) {
                     return null;
                 }
+                else if (inst_type == typeof(int)) {
+                    return 0;
+                }
 
                 throw new JsonException (String.Format (
                             "Can't assign null to an instance of type {0}",
@@ -359,8 +362,12 @@ namespace LitJson
                 }
 
                 // Maybe it's an enum
-                if (value_type.IsEnum)
+                if (value_type.IsEnum) {
+                    if (reader.Token == JsonToken.String)
+                        return Enum.Parse(value_type, (string)reader.Value, true);
+
                     return Enum.ToObject (value_type, reader.Value);
+                }
 
                 // Try using an implicit conversion operator
                 MethodInfo conv_op = GetConvOp (value_type, json_type);
@@ -564,6 +571,27 @@ namespace LitJson
         {
             ToWrapper (
                 delegate { return new JsonMockWrapper (); }, reader);
+        }
+
+        private static List<T> ReadList<T> (JsonReader reader)
+        {
+            reader.Read ();
+
+            if (reader.Token != JsonToken.ArrayStart) {
+                throw new JsonException("Not a JSON array.");
+            }
+
+            List<T> list = new List<T>();
+
+            while (true) {
+                T item = (T) ReadValue (typeof(T), reader);
+                if (item == null && reader.Token == JsonToken.ArrayEnd)
+                        break;
+
+                list.Add (item);
+            }
+
+            return list;
         }
 
         private static void RegisterBaseExporters ()
@@ -895,7 +923,15 @@ namespace LitJson
         {
             JsonReader reader = new JsonReader (json);
 
+
             return (T) ReadValue (typeof (T), reader);
+        }
+
+        public static List<T> ToListOf<T> (string json)
+        {
+            JsonReader reader = new JsonReader (json);
+
+            return ReadList<T> (reader);
         }
 
         public static IJsonWrapper ToWrapper (WrapperFactory factory,
